@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "itch-jams": {
+      "command": "python3",
+      "args": ["/absolute/path/to/itch-jams-mcp/server.py"],
+      "env": {}
+    }
+  }
+}
