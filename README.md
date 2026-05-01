@@ -38,7 +38,25 @@ pip install mcp httpx beautifulsoup4
 python3 server.py
 ```
 
-## Configure your MCP client
+## Transports
+
+The server speaks three transports. Pick whichever your client supports:
+
+| Transport | Use case | Command |
+| --- | --- | --- |
+| `stdio` (default) | Local MCP clients (Claude Desktop, Claude Code) — one process per client. | `itch-jams-mcp` |
+| `sse` | Older HTTP/SSE-based clients. | `itch-jams-mcp --transport sse --host 127.0.0.1 --port 8000` |
+| `streamable-http` | Current MCP HTTP transport. Best for shared/remote deployments. | `itch-jams-mcp --transport streamable-http --host 127.0.0.1 --port 8000` |
+
+Useful flags:
+
+- `--mount-path PATH` — override the URL path (defaults: `/sse` for SSE, `/mcp` for Streamable HTTP).
+- `--stateless` *(streamable-http)* — run without per-session state; each request is independent. Handy behind load balancers.
+- `--json-response` *(streamable-http)* — return plain JSON instead of streaming SSE for non-streaming calls.
+
+When running an HTTP transport, point your client at, e.g., `http://127.0.0.1:8000/sse` or `http://127.0.0.1:8000/mcp`.
+
+## Configure your MCP client (stdio)
 
 Copy `claude_mcp_config.example.json` and adjust the path to `server.py`.
 

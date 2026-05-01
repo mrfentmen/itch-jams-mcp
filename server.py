@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """MCP server that parses game jams from itch.io"""
 
+import argparse
 import asyncio
+import contextlib
 import json
 import re
 
@@ -332,13 +334,101 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     return [types.TextContent(type="text", text=text)]
 
 
-async def _serve():
+async def _serve_stdio() -> None:
     async with stdio_server() as (read_stream, write_stream):
         await app.run(read_stream, write_stream, app.create_initialization_options())
 
 
-def main():
-    asyncio.run(_serve())
+def build_sse_app(message_path: str = "/messages/", sse_path: str = "/sse"):
+    """Build a Starlette app that serves the MCP server over SSE."""
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.routing import Mount, Route
+
+    transport = SseServerTransport(message_path)
+
+    async def handle_sse(request):
+        async with transport.connect_sse(
+            request.scope, request.receive, request._send
+        ) as (read_stream, write_stream):
+            await app.run(read_stream, write_stream, app.create_initialization_options())
+        from starlette.responses import Response
+        return Response()
+
+    return Starlette(
+        routes=[
+            Route(sse_path, endpoint=handle_sse, methods=["GET"]),
+            Mount(message_path, app=transport.handle_post_message),
+        ]
+    )
+
+
+def build_streamable_http_app(mount_path: str = "/mcp", *, stateless: bool = False, json_response: bool = False):
+    """Build a Starlette app that serves the MCP server over Streamable HTTP."""
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+    from starlette.applications import Starlette
+    from starlette.routing import Mount
+
+    manager = StreamableHTTPSessionManager(
+        app=app, stateless=stateless, json_response=json_response
+    )
+
+    async def handle(scope, receive, send):
+        await manager.handle_request(scope, receive, send)
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_app):
+        async with manager.run():
+            yield
+
+    return Starlette(routes=[Mount(mount_path, app=handle)], lifespan=lifespan)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="itch-jams-mcp", description=__doc__)
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse", "streamable-http"],
+        default="stdio",
+        help="Transport to expose the MCP server on (default: stdio).",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="Host to bind for HTTP transports (default: 127.0.0.1).")
+    parser.add_argument("--port", type=int, default=8000, help="Port to bind for HTTP transports (default: 8000).")
+    parser.add_argument(
+        "--mount-path",
+        default=None,
+        help="URL path to mount the HTTP transport on. Default: /sse for sse, /mcp for streamable-http.",
+    )
+    parser.add_argument(
+        "--stateless",
+        action="store_true",
+        help="(streamable-http only) Run without per-session state — each request is independent.",
+    )
+    parser.add_argument(
+        "--json-response",
+        action="store_true",
+        help="(streamable-http only) Return JSON responses instead of streaming SSE for non-streaming calls.",
+    )
+    args = parser.parse_args()
+
+    if args.transport == "stdio":
+        asyncio.run(_serve_stdio())
+        return
+
+    import uvicorn
+
+    if args.transport == "sse":
+        sse_path = args.mount_path or "/sse"
+        starlette_app = build_sse_app(sse_path=sse_path)
+    else:  # streamable-http
+        mount_path = args.mount_path or "/mcp"
+        starlette_app = build_streamable_http_app(
+            mount_path=mount_path,
+            stateless=args.stateless,
+            json_response=args.json_response,
+        )
+
+    uvicorn.run(starlette_app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

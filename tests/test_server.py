@@ -313,3 +313,76 @@ async def test_list_tools_exposes_all_tools():
         "search_jams",
         "get_jam_details",
     }
+
+
+# ----- HTTP transports (smoke tests) ------------------------------------------
+
+
+def test_build_sse_app_routes():
+    app_ = server.build_sse_app(sse_path="/sse", message_path="/messages/")
+    paths = {getattr(r, "path", None) for r in app_.routes}
+    assert "/sse" in paths
+    # Mount routes expose `path` too.
+    assert any(getattr(r, "path", "").startswith("/messages") for r in app_.routes)
+
+
+def test_build_streamable_http_app_routes():
+    app_ = server.build_streamable_http_app(mount_path="/mcp")
+    paths = [getattr(r, "path", None) for r in app_.routes]
+    assert any(p == "/mcp" for p in paths)
+
+
+def test_main_dispatches_stdio_by_default(monkeypatch):
+    called = {}
+
+    def fake_run(coro):
+        called["ran"] = True
+        coro.close()
+
+    monkeypatch.setattr(server.asyncio, "run", fake_run)
+    monkeypatch.setattr("sys.argv", ["itch-jams-mcp"])
+    server.main()
+    assert called == {"ran": True}
+
+
+def test_main_dispatches_sse(monkeypatch):
+    captured = {}
+
+    class _FakeUvicorn:
+        @staticmethod
+        def run(app, host, port):
+            captured["host"] = host
+            captured["port"] = port
+            captured["app"] = app
+
+    import sys
+    monkeypatch.setitem(sys.modules, "uvicorn", _FakeUvicorn)
+    monkeypatch.setattr("sys.argv", [
+        "itch-jams-mcp", "--transport", "sse", "--host", "0.0.0.0", "--port", "9001"
+    ])
+    server.main()
+    assert captured["host"] == "0.0.0.0"
+    assert captured["port"] == 9001
+    paths = {getattr(r, "path", None) for r in captured["app"].routes}
+    assert "/sse" in paths
+
+
+def test_main_dispatches_streamable_http(monkeypatch):
+    captured = {}
+
+    class _FakeUvicorn:
+        @staticmethod
+        def run(app, host, port):
+            captured["app"] = app
+            captured["port"] = port
+
+    import sys
+    monkeypatch.setitem(sys.modules, "uvicorn", _FakeUvicorn)
+    monkeypatch.setattr("sys.argv", [
+        "itch-jams-mcp", "--transport", "streamable-http",
+        "--mount-path", "/rpc", "--port", "9002", "--stateless",
+    ])
+    server.main()
+    assert captured["port"] == 9002
+    paths = [getattr(r, "path", None) for r in captured["app"].routes]
+    assert "/rpc" in paths
