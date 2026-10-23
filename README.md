@@ -1,6 +1,6 @@
 # itch-jams-mcp
 
-A [Model Context Protocol](https://modelcontextprotocol.io) server that lets LLM clients (Claude Desktop, Claude Code, any MCP-compatible app) browse and search game jams on [itch.io](https://itch.io/jams).
+A [Model Context Protocol](https://modelcontextprotocol.io) server that lets LLM clients (Claude Desktop, Claude Code, any MCP-compatible app) browse game jams **and games** on [itch.io](https://itch.io).
 
 The server scrapes itch.io directly — no API key, no account required.
 
@@ -16,7 +16,29 @@ The server scrapes itch.io directly — no API key, no account required.
 | `search_jams` | Keyword search by jam title, with optional `active`/`upcoming`/`recent` filter. |
 | `get_jam_details` | Full description of a specific jam (title, host, dates, stats, rules). Accepts a slug or full URL. |
 
+### General itch.io tools
+
+| Tool | Purpose |
+| --- | --- |
+| `get_trending_games` | Trending/featured games on the itch.io front page. |
+| `get_new_games` | Newest uploads. |
+| `get_top_sellers` | Current top sellers. |
+| `get_free_games` | Free games. |
+| `browse_games` | Combine up to 2 filters: sort (`trending`/`newest`/`top-sellers`), price (`free`/`paid`), platform, genre, tag. |
+| `get_games_by_tag` | Games by tag slug, e.g. `pixel-art`. |
+| `get_games_by_genre` | Games by genre slug, e.g. `platformer`. |
+| `search_games` | Keyword search over public browse pages (itch.io's own `/search` route is robots-disallowed, so matching is done locally). Scope + `max_pages` control. |
+| `get_games_on_sale` | Current discounts with price, savings and end date. |
+| `search_assets` | Search game assets (sprites, tilesets, music, UI kits) on the public asset browse pages. |
+| `get_game_details` | One game's description, price, rating, tags and info panel. Accepts a URL or `user/game`. |
+| `get_game_devlogs` | Devlog post list for a game. |
+| `get_creator_profile` | A creator's public profile: followers, posts, joined date, external links. |
+| `get_creator_games` | Games listed on a creator's profile page. |
+| `get_jam_entries` | Entries submitted to a jam, paginated. Accepts a slug or full URL. |
+
 All listing tools take an optional `page` argument (default `1`).
+
+itch.io allows at most **2 combined browse filters per URL** (e.g. `free + platform-web`); the server rejects longer chains instead of getting HTTP 403.
 
 ## Requirements
 
@@ -94,6 +116,11 @@ After installing as a package, you can also use the console script:
 - *"Show me featured upcoming jams on itch.io."*
 - *"Search active jams for the word 'horror'."*
 - *"Open the details for the jam `mini-jame-gam-53` and summarize the rules."*
+- *"List free platformers on itch.io playable in the browser."*
+- *"What's on sale on itch.io right now, and which deals end first?"*
+- *"Find pixel-art game assets, then show details for the top result."*
+- *"Look up the game samandev/tamaweb — rating, tags, and latest devlog posts."*
+- *"Who is nopanamaman on itch.io, and what games do they have?"*
 
 ## Development
 

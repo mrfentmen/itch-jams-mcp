@@ -1,12 +1,12 @@
 [project]
 name = "itch-jams-mcp"
-version = "0.1.0"
-description = "MCP server that exposes itch.io game jams to LLM clients"
+version = "0.2.0"
+description = "MCP server that exposes itch.io game jams and games to LLM clients"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 authors = [{ name = "petrarka" }]
-keywords = ["mcp", "itch.io", "game-jam", "claude", "llm"]
+keywords = ["mcp", "itch.io", "game-jam", "indie-games", "claude", "llm"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -16,7 +16,7 @@ classifiers = [
     "Topic :: Games/Entertainment",
 ]
 dependencies = [
-    "mcp>=1.0.0",
+    "mcp>=1.3.0,<2",
     "httpx>=0.27.0",
     "beautifulsoup4>=4.12.0",
     "starlette>=0.36",

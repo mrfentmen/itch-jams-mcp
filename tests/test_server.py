@@ -312,6 +312,21 @@ async def test_list_tools_exposes_all_tools():
         "get_featured_jams",
         "search_jams",
         "get_jam_details",
+        "get_trending_games",
+        "get_new_games",
+        "get_top_sellers",
+        "get_free_games",
+        "browse_games",
+        "get_games_by_tag",
+        "get_games_by_genre",
+        "search_games",
+        "get_games_on_sale",
+        "search_assets",
+        "get_game_details",
+        "get_game_devlogs",
+        "get_creator_profile",
+        "get_creator_games",
+        "get_jam_entries",
     }
 
 
